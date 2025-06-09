@@ -1,6 +1,8 @@
-# kokaq server
+<div align="center">
+  <img height="300" src="https://github.com/kokaq/.github/blob/main/kokaq-server.png" alt="cute quokka as kokaq logo"/>
+</div>
 
-This is the production server component of kokaq. It hosts APIs, integrates with backend storage, exposes metrics, and runs the scheduling/dispatch logic using `kokaq-core`.
+`kokaq-server` is the production server component of `kokaq`. It hosts APIs, integrates with backend storage, exposes metrics, and runs the scheduling/dispatch logic using `kokaq-core`.
 
 ---
 
