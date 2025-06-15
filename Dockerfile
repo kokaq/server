@@ -4,10 +4,10 @@
 # WORKDIR /
 # COPY ["/", "/"]
 # RUN go mod download
-# RUN go build -o kokaq-server ./cmd/kokaq-server/main.go
+# RUN go build -o server ./cmd/server/main.go
 
 # FROM debian:bookworm-slim
 # WORKDIR /root/
-# COPY --from=builder /kokaq-server /root/kokaq-server
+# COPY --from=builder /server /root/server
 # EXPOSE 4242
-# CMD ["./kokaq-server", "-c", "/root/kokaq-server/config.yaml"]
+# CMD ["./server", "-c", "/root/server/config.yaml"]
