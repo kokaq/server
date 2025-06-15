@@ -3,6 +3,7 @@ module github.com/kokaq/server
 go 1.24.4
 
 require (
+	github.com/kokaq/protocol v0.0.0-20250615124554-e73e85aaf93d
 	github.com/prometheus/client_golang v1.22.0
 	github.com/sirupsen/logrus v1.9.3
 	go.opentelemetry.io/otel v1.36.0
@@ -16,8 +17,6 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/kokaq/client v0.0.0-20250608163814-5b9fc8028fef // indirect
-	github.com/kokaq/protocol v0.0.0-20250615124554-e73e85aaf93d // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
