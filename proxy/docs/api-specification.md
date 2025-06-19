@@ -250,11 +250,3 @@ OK
 All control and data plane endpoints **require authentication**:
 - Recommended: **Bearer token** in `Authorization` header
 - Alternative: **mTLS** with client certificates
-
----
-
-Let me know if you'd like:
-- A Postman collection
-- OpenAPI 3.1 YAML spec
-- More endpoints filled out
-- CORS, pagination, or error format documentation
