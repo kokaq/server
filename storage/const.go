@@ -1,0 +1,5 @@
+package storage
+
+const (
+	STORAGE_SERVICE_API_TCP_TIMEOUT_IN_SECONDS_DEFAULT = 10
+)
