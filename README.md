@@ -4,7 +4,8 @@
 
 `server` is the production server component of `kokaq`. It hosts APIs, integrates with backend storage, exposes metrics, and runs the scheduling/dispatch logic using `core`.
 
----
+[![Go Reference](https://pkg.go.dev/badge/github.com/kokaq/server.svg)](https://pkg.go.dev/github.com/kokaq/server)
+[![Tests](https://github.com/kokaq/server/actions/workflows/go.yml/badge.svg)](https://github.com/kokaq/server/actions/workflows/go.yml)
 
 ## Responsibilities
 - REST/AMQP API gateway
