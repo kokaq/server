@@ -1,0 +1,8 @@
+FROM golang:1.22-alpine AS dev
+WORKDIR /app
+
+COPY . .
+COPY ../core ../core
+COPY ../protocol ../protocol
+
+RUN go mod tidy && go build ./...

@@ -1,0 +1,23 @@
+IMAGE_PREFIX ?= kokaq
+GIT_SHA := $(shell git rev-parse --short HEAD)
+VERSION ?= $(GIT_SHA)
+BUILD_TAG ?= $(VERSION)
+
+.PHONY: all build-control build-data docker-dev docker-push
+
+# CI-safe multi-stage builds
+build-control:
+	docker build -f Dockerfile --target=control-plane -t $(IMAGE_PREFIX)/control-plane:$(BUILD_TAG) .
+
+build-data:
+	docker build -f Dockerfile --target=data-plane -t $(IMAGE_PREFIX)/data-plane:$(BUILD_TAG) .
+
+docker-push:
+	docker push $(IMAGE_PREFIX)/control-plane:$(BUILD_TAG)
+	docker push $(IMAGE_PREFIX)/data-plane:$(BUILD_TAG)
+
+# Local dev using go.work
+docker-dev:
+	docker build -f Dockerfile.dev -t $(IMAGE_PREFIX)/dev .
+
+all: build-control build-data
