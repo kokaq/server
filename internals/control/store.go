@@ -13,66 +13,66 @@ import (
 
 type ControlStore struct {
 	ShardManagerAddress string
-	AddressIndex        map[string]map[string]string
+	AddressIndex        map[string]map[string][]string
 }
 
 func NewControlStore(rootDirectory string, shardManagerAddress string) *ControlStore {
 	return &ControlStore{
 		ShardManagerAddress: shardManagerAddress,
-		AddressIndex:        make(map[string]map[string]string, 0),
+		AddressIndex:        make(map[string]map[string][]string, 0),
 	}
 }
 
-func (d *ControlStore) GetDataPlaneAddress(namespace string, queue string) (string, bool) {
+func (d *ControlStore) GetDataPlaneAddress(namespace string, queue string) (string, string, bool) {
 	logger.ConsoleLog("INFO", "Resolving shard address: Namespace=%s, Queue=%s", namespace, queue)
 	// Check if address is already cached
 	if shardAddress, exists := d.AddressIndex[namespace][queue]; exists {
-		logger.ConsoleLog("INFO", "Shard address found in cache: Namespace=%s, Queue=%s, Address=%s", namespace, queue, shardAddress)
-		return shardAddress, true
+		logger.ConsoleLog("INFO", "Shard address found in cache: Namespace=%s, Queue=%s, Address=%s", namespace, queue, shardAddress[0])
+		return shardAddress[0], shardAddress[1], true
 	}
 	// No cached address — initiate RPC to shard manager
 	logger.ConsoleLog("INFO", "Shard address not found in cache: Namespace=%s, Queue=%s", namespace, queue)
 
 	var err error
-	address, _, _, err := d.getOrAddDataPlaneAddressFromShardManager(namespace, queue, false)
+	address, internalAddress, _, _, err := d.getOrAddDataPlaneAddressFromShardManager(namespace, queue, false)
 	if err == nil {
 		// Update address cache
 		// Initialize map if needed and cache address
 		if _, ok := d.AddressIndex[namespace]; !ok {
-			d.AddressIndex[namespace] = make(map[string]string)
+			d.AddressIndex[namespace] = make(map[string][]string)
 		}
-		d.AddressIndex[namespace][queue] = address
-		return d.AddressIndex[namespace][queue], true
+		d.AddressIndex[namespace][queue] = append(d.AddressIndex[namespace][queue], address, internalAddress)
+		return d.AddressIndex[namespace][queue][0], d.AddressIndex[namespace][queue][1], true
 	} else {
 		logger.ConsoleLog("ERROR", "Cannot get data plane from shard manager: Namespace=%s, Queue=%s", namespace, queue)
-		return "", false
+		return "", "", false
 	}
 }
 
-func (d *ControlStore) GetOrAddDataPlaneAddress(namespace string, queue string) (dataPlaneAddress string, success bool, newQueue bool, shardId uint64) {
+func (d *ControlStore) GetOrAddDataPlaneAddress(namespace string, queue string) (dataPlaneAddress string, dataPlaneInternalAddress string, success bool, newQueue bool, shardId uint64) {
 	logger.ConsoleLog("INFO", "Resolving shard address: Namespace=%s, Queue=%s", namespace, queue)
 	// Check if address is already cached
 	if shardAddress, exists := d.AddressIndex[namespace][queue]; exists {
-		logger.ConsoleLog("INFO", "Shard address found in cache: Namespace=%s, Queue=%s, Address=%s", namespace, queue, shardAddress)
-		return shardAddress, true, false, 0
+		logger.ConsoleLog("INFO", "Shard address found in cache: Namespace=%s, Queue=%s, Address=%s", namespace, queue, shardAddress[0])
+		return shardAddress[0], shardAddress[1], true, false, 0
 	}
 	// No cached address — initiate RPC to shard manager
 	logger.ConsoleLog("INFO", "Shard address not found in cache: Namespace=%s, Queue=%s", namespace, queue)
 
 	var created bool
 	var err error
-	address, created, newShardId, err := d.getOrAddDataPlaneAddressFromShardManager(namespace, queue, true)
+	address, internalAddress, created, newShardId, err := d.getOrAddDataPlaneAddressFromShardManager(namespace, queue, true)
 	if err == nil {
 		// Update address cache
 		// Initialize map if needed and cache address
 		if _, ok := d.AddressIndex[namespace]; !ok {
-			d.AddressIndex[namespace] = make(map[string]string, 0)
+			d.AddressIndex[namespace] = make(map[string][]string, 0)
 		}
-		d.AddressIndex[namespace][queue] = address
-		return d.AddressIndex[namespace][queue], true, created, newShardId
+		d.AddressIndex[namespace][queue] = append(d.AddressIndex[namespace][queue], address, internalAddress)
+		return d.AddressIndex[namespace][queue][0], d.AddressIndex[namespace][queue][1], true, created, newShardId
 	} else {
 		logger.ConsoleLog("ERROR", "Cannot get data plane from shard manager: Namespace=%s, Queue=%s", namespace, queue)
-		return "", false, false, 0
+		return "", "", false, false, 0
 	}
 }
 
@@ -80,7 +80,7 @@ func (d *ControlStore) RemoveDataPlaneAddress(namespace string, queue string) (s
 	logger.ConsoleLog("INFO", "Cleaing shard address: Namespace=%s, Queue=%s", namespace, queue)
 	// Check if address is already cached
 	if shardAddress, exists := d.AddressIndex[namespace][queue]; exists {
-		logger.ConsoleLog("INFO", "Shard address found in cache: Namespace=%s, Queue=%s, Address=%s", namespace, queue, shardAddress)
+		logger.ConsoleLog("INFO", "Shard address found in cache: Namespace=%s, Queue=%s, Address=%s", namespace, queue, shardAddress[0])
 		delete(d.AddressIndex[namespace], queue)
 	}
 
@@ -110,12 +110,12 @@ func (d *ControlStore) RemoveDataPlaneAddress(namespace string, queue string) (s
 	return true
 }
 
-func (d *ControlStore) getOrAddDataPlaneAddressFromShardManager(namespace string, queue string, createIfNotFound bool) (string, bool, uint64, error) {
+func (d *ControlStore) getOrAddDataPlaneAddressFromShardManager(namespace string, queue string, createIfNotFound bool) (string, string, bool, uint64, error) {
 	logger.ConsoleLog("INFO", "Shard address not found in cache: Namespace=%s, Queue=%s. Contacting shard manager...", namespace, queue)
 
 	conn, err := d.getShardManagerConnection()
 	if err != nil {
-		return "", false, 0, err
+		return "", "", false, 0, err
 	}
 	defer conn.Close()
 
@@ -134,20 +134,20 @@ func (d *ControlStore) getOrAddDataPlaneAddressFromShardManager(namespace string
 	res, err := shardManagerClient.GetShard(ctx, req)
 	if err != nil {
 		logger.ConsoleLog("ERROR", "GetShard RPC failed: Namespace=%s, Queue=%s: %v", namespace, queue, err)
-		return "", false, 0, fmt.Errorf("shardmanager.getShard rpc failed: %v", err)
+		return "", "", false, 0, fmt.Errorf("shardmanager.getShard rpc failed: %v", err)
 	}
 
 	// Validate response
-	if res != nil && res.GrpcAddress != "" {
+	if res != nil && res.GrpcAddress != "" && res.InternalAddress != "" {
 		if res.IsNew {
-			logger.ConsoleLog("INFO", "New shard created: Namespace=%s, Queue=%s, Address=%s", namespace, queue, res.GrpcAddress)
+			logger.ConsoleLog("INFO", "New shard created: Namespace=%s, Queue=%s, Address=%s, ShardId=%x", namespace, queue, res.GrpcAddress, res.NewShardId)
 		} else {
 			logger.ConsoleLog("INFO", "Existing shard returned: Namespace=%s, Queue=%s, Address=%s", namespace, queue, res.GrpcAddress)
 		}
 
-		return res.GrpcAddress, res.IsNew, res.NewShardId, nil
+		return res.GrpcAddress, res.InternalAddress, res.IsNew, res.NewShardId, nil
 	}
-	return "", false, 0, nil
+	return "", "", false, 0, nil
 }
 
 func (d *ControlStore) getShardManagerConnection() (*grpc.ClientConn, error) {

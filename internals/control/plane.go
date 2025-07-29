@@ -41,7 +41,7 @@ func (d *ControlPlane) AddNamespace(c context.Context, p *proto.KokaqNamespaceRe
 func (d *ControlPlane) GetDataplane(c context.Context, p *proto.GetDataplaneRequest) (*proto.GetDataplaneResponse, error) {
 	logger.ConsoleLog("INFO", "Received GetDataplane request: Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 
-	address, found := d.store.GetDataPlaneAddress(p.Namespace, p.Queue)
+	address, _, found := d.store.GetDataPlaneAddress(p.Namespace, p.Queue)
 	if !found {
 		logger.ConsoleLog("ERROR", "Failed to get shard address for Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 		return &proto.GetDataplaneResponse{
@@ -64,39 +64,39 @@ func (d *ControlPlane) GetDataplane(c context.Context, p *proto.GetDataplaneRequ
 func (d *ControlPlane) GetQueue(c context.Context, p *proto.KokaqQueueRequest) (*proto.KokaqQueueResponse, error) {
 	logger.ConsoleLog("INFO", "Fetching queue: Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 
-	address, found := d.store.GetDataPlaneAddress(p.Namespace, p.Queue)
+	_, internalAddress, found := d.store.GetDataPlaneAddress(p.Namespace, p.Queue)
 	if !found {
 		logger.ConsoleLog("ERROR", "Failed to get shard address for Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 		return nil, fmt.Errorf("failed to get queue for namespace=%s, queue=%s", p.Namespace, p.Queue)
 	}
 
-	return d.getQueueFromShard(address, p.Namespace, p.Queue)
+	return d.getQueueFromShard(internalAddress, p.Namespace, p.Queue)
 }
 
 // AddQueue creates a new queue by requesting a shard assignment and sending a creation RPC.
 func (d *ControlPlane) AddQueue(c context.Context, p *proto.KokaqQueueRequest) (*proto.KokaqQueueResponse, error) {
 	logger.ConsoleLog("INFO", "Creating new queue: Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 
-	address, success, newCreated, shardId := d.store.GetOrAddDataPlaneAddress(p.Namespace, p.Queue)
+	_, internalAddress, success, newCreated, shardId := d.store.GetOrAddDataPlaneAddress(p.Namespace, p.Queue)
 	if !newCreated || !success {
 		logger.ConsoleLog("ERROR", "Failed to create shard address for Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 		return nil, fmt.Errorf("failed to create queue for namespace=%s, queue=%s", p.Namespace, p.Queue)
 	}
 
-	return d.newQueueFromShard(address, p.Namespace, p.Queue, shardId)
+	return d.newQueueFromShard(internalAddress, p.Namespace, p.Queue, shardId)
 }
 
 // ClearQueue removes all messages from the specified queue on the shard.
 func (d *ControlPlane) ClearQueue(c context.Context, p *proto.KokaqQueueRequest) (*proto.StatusResponse, error) {
 	logger.ConsoleLog("INFO", "Clearing queue: Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 
-	shardDataAddress, found := d.store.GetDataPlaneAddress(p.Namespace, p.Queue)
+	_, internalAddress, found := d.store.GetDataPlaneAddress(p.Namespace, p.Queue)
 	if !found {
 		logger.ConsoleLog("ERROR", "Failed to get shard address for Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 		return nil, fmt.Errorf("failed to get queue for namespace=%s, queue=%s", p.Namespace, p.Queue)
 	}
 
-	if cleared, err := d.clearQueueFromShards(shardDataAddress, p.Namespace, p.Queue); !cleared || err != nil {
+	if cleared, err := d.clearQueueFromShards(internalAddress, p.Namespace, p.Queue); !cleared || err != nil {
 		logger.ConsoleLog("ERROR", "Clear operation failed: %v", err)
 		return nil, fmt.Errorf("cannot clear queue")
 	}
@@ -108,13 +108,13 @@ func (d *ControlPlane) ClearQueue(c context.Context, p *proto.KokaqQueueRequest)
 func (d *ControlPlane) DeleteQueue(c context.Context, p *proto.KokaqQueueRequest) (*proto.StatusResponse, error) {
 	logger.ConsoleLog("INFO", "Deleting queue: Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 
-	shardDataAddress, found := d.store.GetDataPlaneAddress(p.Namespace, p.Queue)
+	_, internalAddress, found := d.store.GetDataPlaneAddress(p.Namespace, p.Queue)
 	if !found {
 		logger.ConsoleLog("ERROR", "Failed to get shard address for Namespace=%s, Queue=%s", p.Namespace, p.Queue)
 		return nil, fmt.Errorf("failed to get queue for namespace=%s, queue=%s", p.Namespace, p.Queue)
 	}
 
-	if deleted, err := d.deleteQueueFromShards(shardDataAddress, p.Namespace, p.Queue); !deleted || err != nil {
+	if deleted, err := d.deleteQueueFromShards(internalAddress, p.Namespace, p.Queue); !deleted || err != nil {
 		logger.ConsoleLog("ERROR", "Delete operation failed: %v", err)
 		return nil, fmt.Errorf("cannot delete queue")
 	}

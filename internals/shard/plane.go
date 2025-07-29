@@ -21,7 +21,7 @@ func NewShardPlane(rootDirectory string) (*ShardPlane, error) {
 
 func (d *ShardPlane) RegisterNode(c context.Context, p *proto.RegisterNodeRequest) (*proto.RegisterNodeResponse, error) {
 	logger.ConsoleLog("INFO", "Registering shard at address: %s", p.GrpcAddress)
-	d.store.RegisterNode(p.GrpcAddress)
+	d.store.RegisterNode(p.GrpcAddress, p.InternalAddress)
 	logger.ConsoleLog("INFO", "Shard registration successful for address: %s", p.GrpcAddress)
 	return &proto.RegisterNodeResponse{Accepted: true}, nil
 }
@@ -40,9 +40,20 @@ func (s *ShardPlane) GetShard(ctx context.Context, p *proto.GetShardRequest) (*p
 	if found {
 		logger.ConsoleLog("DEBUG", "Found existing shardId=%x with address=%s", sh.GetShardId(), sh.GetAddress())
 		return &proto.GetShardResponse{
-			GrpcAddress: sh.GetAddress(),
-			IsNew:       false,
+			GrpcAddress:     sh.GetAddress(),
+			InternalAddress: sh.GetInternalAddress(),
+			IsNew:           false,
 		}, nil
+	} else {
+		sh, found = s.store.GetShard(p.Namespace, p.Queue)
+		if found {
+			logger.ConsoleLog("DEBUG", "Found existing shardId=%x with address=%s", sh.GetShardId(), sh.GetAddress())
+			return &proto.GetShardResponse{
+				GrpcAddress:     sh.GetAddress(),
+				InternalAddress: sh.GetInternalAddress(),
+				IsNew:           false,
+			}, nil
+		}
 	}
 
 	if !p.CreateIfNotFound {
@@ -60,7 +71,8 @@ func (s *ShardPlane) GetShard(ctx context.Context, p *proto.GetShardRequest) (*p
 	if err != nil {
 		logger.ConsoleLog("ERROR", "Could not allocate shard to queue: %v", err)
 		return &proto.GetShardResponse{
-			GrpcAddress: "",
+			GrpcAddress:     "",
+			InternalAddress: "",
 			Status: &proto.StatusResponse{
 				Success: false,
 				Error:   proto.ErrorCode_ERROR_NOT_FOUND,
@@ -69,8 +81,10 @@ func (s *ShardPlane) GetShard(ctx context.Context, p *proto.GetShardRequest) (*p
 	}
 	logger.ConsoleLog("INFO", "Allocated new shardId=%x to address=%s", shrd.GetShardId(), shrd.GetAddress())
 	return &proto.GetShardResponse{
-		GrpcAddress: shrd.GetAddress(),
-		IsNew:       true,
+		GrpcAddress:     shrd.GetAddress(),
+		InternalAddress: shrd.GetInternalAddress(),
+		IsNew:           true,
+		NewShardId:      shrd.shardId,
 	}, nil
 }
 
