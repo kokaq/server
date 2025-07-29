@@ -3,10 +3,10 @@ FROM golang:1.24.4
 
 WORKDIR /kokaq/server
 
-COPY go.docker.work /kokaq/go.work
 COPY core /kokaq/core
 COPY protocol /kokaq/protocol
 COPY server /kokaq/server
+COPY server/go.dev.work /kokaq/go.work
 WORKDIR /kokaq/server
 
 # Optional default ports
