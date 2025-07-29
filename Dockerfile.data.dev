@@ -1,0 +1,20 @@
+FROM golang:1.24.4
+
+
+WORKDIR /kokaq/server
+
+COPY go.docker.work /kokaq/go.work
+COPY core /kokaq/core
+COPY protocol /kokaq/protocol
+COPY server /kokaq/server
+WORKDIR /kokaq/server
+
+# Optional default ports
+ENV PORT=9001
+ENV SHARD_MANAGER_ADDRESS=control-plane:8999
+ENV ROOT_DIRECTORY=/kokaq/bin
+
+# Expose only default port, can be overridden at runtime
+EXPOSE ${PORT}
+
+CMD ["go", "run", "./cmd/dataplane/main.go"]

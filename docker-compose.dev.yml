@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  control-plane:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile.control.dev
+    environment:
+      - ENV=development
+      - CONTROL_PORT=9000
+      - SHARD_MANAGER_PORT=8999
+    ports:
+      - 9000:9000
+      - 8999:8999
+    working_dir: /kokaq/server
+
+  data-plane:
+    build:
+      context: ../
+      dockerfile: server/Dockerfile.data.dev
+    ports:
+      - 9001:9001
+    environment:
+      - ENV=development
+      - ROOT_DIRECTORY=/kokaq/bin
+      - PORT=9001
+      - SHARD_MANAGER_ADDRESS=control-plane:8999
+    working_dir: /kokaq/server
